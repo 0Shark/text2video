@@ -27,10 +27,10 @@ tts_client = tts.TextToSpeechClient()
 min_stock_video_length = 5  # seconds
 min_stock_image_length = 3  # seconds
 max_paragraphs = 3
+orientation = "landscape"
+asset_size = "medium"
 
 # Generate random string
-
-
 def get_random_string(length):
     letters = "abcdefghijklmnopqrstuvwxyz1234567890"
     result_str = "".join(random.choice(letters) for i in range(length))
@@ -144,11 +144,12 @@ def get_tts_audio(video_id):
 
 
 # Photo and video assets
-def get_stock_images(video_id, part_number, part_tags, image_count, orientation="landscape"):
+def get_stock_images(video_id, part_number, part_tags, image_count, orientation, asset_size):
     api_key = os.getenv("PEXELS_API_KEY")
     # Perform search with the tags joined by a + sign
     response = requests.get("https://api.pexels.com/v1/search?query=" + "+".join(part_tags) + "&per_page=" +
-                            str(image_count) + "&orientation=" + orientation, headers={"Authorization": api_key})
+                            str(image_count) + "&orientation=" + orientation + "&size=" + str(asset_size),
+                            headers={"Authorization": api_key})
     # Get images
     images = response.json()["photos"]
     # Get image URLs
@@ -161,15 +162,14 @@ def get_stock_images(video_id, part_number, part_tags, image_count, orientation=
         with open("videos/" + video_id + "/p" + str(part_number) + "/img/" + str(i) + ".jpg", "wb") as f:
             f.write(image.content)
 
-    return True
 
-
-def get_stock_videos(video_id, part_number, part_tags, video_count, orientation="landscape"):
+def get_stock_videos(video_id, part_number, part_tags, video_count, orientation, asset_size):
 
     api_key = os.getenv("PEXELS_API_KEY")
 
     response = requests.get("https://api.pexels.com/videos/search?query=" + "+".join(
-        part_tags) + "&orientation=" + orientation, headers={"Authorization": api_key})
+        part_tags) + "&orientation=" + orientation + "&size=" + str(asset_size) + "&per_page=" + str(video_count),
+        headers={"Authorization": api_key})
     # Get videos
     videos = response.json()["videos"]
     
@@ -184,11 +184,10 @@ def get_stock_videos(video_id, part_number, part_tags, video_count, orientation=
         with open("videos/" + video_id + "/p" + str(part_number) + "/video/" + str(i) + ".mp4", "wb") as f:
             f.write(video.content)
 
-    return True
-
 
 # Setup stock assets
-def get_part_stock_assets(video_id, part_num, part_len, orientation="landscape"):
+def get_part_stock_assets(video_id, part_num, part_len):
+    global orientation, asset_size
 
     # Read tags from script.json
     with open("videos/" + video_id + "/script.json", "r") as f:
@@ -199,18 +198,9 @@ def get_part_stock_assets(video_id, part_num, part_len, orientation="landscape")
 
     img_count = int(part_len / min_stock_image_length)
     video_count = int(part_len / min_stock_video_length)
-    print("Getting " + str(img_count) + " images and " + 
-            str(video_count) + " videos for part " + str(part_num))
 
-    if get_stock_images(video_id, part_num, part_tags, img_count, orientation):
-        print("Got images for part " + str(part_num))
-    else:
-        print("Failed to get images for part " + str(part_num))
-
-    if get_stock_videos(video_id, part_num, part_tags, video_count, orientation):
-        print("Got videos for part " + str(part_num))
-    else:
-        print("Failed to get videos for part " + str(part_num))
+    get_stock_images(video_id, part_num, part_tags, img_count, orientation, asset_size)
+    get_stock_videos(video_id, part_num, part_tags, video_count, orientation, asset_size)
 
 
 def get_stock_assets(video_id):
@@ -234,7 +224,11 @@ def get_stock_assets(video_id):
     return True
 
 
-def prepare_assets(topic):
+def prepare_assets(topic, custom_orientation="landscape", custom_asset_size="medium"):
+    global orientation, asset_size
+    orientation = custom_orientation
+    asset_size = custom_asset_size
+
     # Setup video
     video_id = video_setup()
     # Get video script
