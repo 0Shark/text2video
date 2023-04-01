@@ -25,7 +25,6 @@ tts_client = tts.TextToSpeechClient()
 
 # Global variables
 min_stock_video_length = 5  # seconds
-max_stock_video_length = 10  # seconds
 min_stock_image_length = 3  # seconds
 max_paragraphs = 3
 
@@ -166,8 +165,6 @@ def get_stock_images(video_id, part_number, part_tags, image_count, orientation=
 
 
 def get_stock_videos(video_id, part_number, part_tags, video_count, orientation="landscape"):
-    global min_stock_video_length
-    global max_stock_video_length
 
     api_key = os.getenv("PEXELS_API_KEY")
 
@@ -175,9 +172,6 @@ def get_stock_videos(video_id, part_number, part_tags, video_count, orientation=
         part_tags) + "&orientation=" + orientation, headers={"Authorization": api_key})
     # Get videos
     videos = response.json()["videos"]
-    # Get as many videos as the video_count but they need to be at least min_stock_video_length long and at most max_stock_video_length long
-    # videos = [video for video in videos if video["duration"] >=
-    #           min_stock_video_length and video["duration"] <= max_stock_video_length]
     
     # Get video URLs
     video_urls = [video["video_files"][0]["link"] for video in videos]
@@ -195,8 +189,6 @@ def get_stock_videos(video_id, part_number, part_tags, video_count, orientation=
 
 # Setup stock assets
 def get_part_stock_assets(video_id, part_num, part_len, orientation="landscape"):
-    global min_stock_image_length
-    global min_stock_video_length
 
     # Read tags from script.json
     with open("videos/" + video_id + "/script.json", "r") as f:
@@ -240,6 +232,28 @@ def get_stock_assets(video_id):
         get_part_stock_assets(video_id, i, part_lengths[i])
 
     return True
+
+
+def prepare_assets(topic):
+    # Setup video
+    video_id = video_setup()
+    # Get video script
+    if get_video_script(topic, video_id):
+        print("Video script generated!")
+    else:
+        print("Video script generation failed!")
+    # Get TTS audio
+    if get_tts_audio(video_id):
+        print("TTS audio generated!")
+    else:
+        print("TTS audio generation failed!")
+    # Get stock assets
+    if get_stock_assets(video_id):
+        print("Stock assets generated!")
+    else:
+        print("Stock assets generation failed!")
+
+    return video_id
 
 
 if __name__ == "__main__":
