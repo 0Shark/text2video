@@ -1,9 +1,18 @@
+'''
+    assets_gen.py
+
+    - This script generates the assets for the video (script, audio, images, videos)
+
+    Author: Juled Zaganjori    
+'''
+
 import os
 import openai
 import json
 import random
 import requests
 from dotenv import load_dotenv
+from mutagen.mp3 import MP3
 from google.cloud import texttospeech as tts
 
 load_dotenv()
@@ -14,13 +23,24 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # Set up TTS client
 tts_client = tts.TextToSpeechClient()
 
+# Global variables
+min_stock_video_length = 5  # seconds
+max_stock_video_length = 10  # seconds
+min_stock_image_length = 3  # seconds
+max_paragraphs = 3
+
+# Generate random string
+
+
 def get_random_string(length):
     letters = "abcdefghijklmnopqrstuvwxyz1234567890"
     result_str = "".join(random.choice(letters) for i in range(length))
     return result_str
 
 
+# Setup video directory
 def video_setup():
+    global max_paragraphs
     # Generate video ID
     video_id = get_random_string(15)
     # Save output
@@ -29,36 +49,43 @@ def video_setup():
     else:
         video_id = get_random_string(20)
 
-    # Use loop instead
-    for i in range(1, 4):
+    for i in range(0, max_paragraphs):
         os.makedirs("videos/" + video_id + "/p" + str(i) + "/img")
-        with open("videos/" + video_id + "/p" + str(i) + "/img/tags.json", "w") as f:
-            f.write("[]")
+    
+    for i in range(0, max_paragraphs):
+        os.makedirs("videos/" + video_id + "/p" + str(i) + "/video")
 
     return video_id
 
 
+# Video script from OpenAI
 def get_video_script(topic, video_id):
+    global max_paragraphs
+
     # Prompt
     prompt = '''
         You are a video script generation machine. I give you a topic and you create 3 paragraphs of video script with an intro and an outro. You should output only in JSON format and separate each paragraph in with a different key "P1", "P2", "P3".  You should also include strings in [] where you should include tags for an image that you find reasonable to display in that moment in time. There should be 10 tags minimum in each such as ["black coat", "dressing room", "wardrobe", "HD", "man"... ]. Make sure to include a variety of these tags in different points in time so that the article images correspond and are abundant.
+        Please stick to the format. Paragraphs are only text and tags are only strings in []. You can't use special characters. DON'T ADD ANYTHING ELSE TO THE RESPONSE. ONLY THE JSON FORMAT BELOW.
         Here's a sample of what I'm looking for:
         {
-        "P1": "PARGRAPH 1",
-        "P2": "PARGRAPH 2",
-        "P3": "PARGRAPH 2",
-        "p1_img_tags": [...],
-        "p2_img_tags": [...],
-        "p3_img_tags": [...],
-        "outro_img_tags": [...]
-        }
-
-        Please stick to the format above. Paragraphs are only text and tags are only strings in []. You can't use special characters.
+            "topic": " '''+topic+''' ",
     '''
+
+    # Create a prompt sample as the one above but as many max_paragraphs value
+    for i in range(0, max_paragraphs):
+        prompt += '''
+                "p''' + str(i) + '''": "paragraph text",
+                "p''' + str(i) + '''_img_tags": [...],
+        '''
+
+    prompt += '''
+        }
+    '''
+
     # Completion
     response = openai.Completion.create(
         engine="text-davinci-003",
-        prompt=prompt + "\n Topic: " + topic + "\n",
+        prompt=prompt + "\n"+"Topic: " + topic,
         temperature=0.5,
         max_tokens=1000,
         top_p=1.0,
@@ -78,9 +105,12 @@ def get_video_script(topic, video_id):
         return False
 
 
+# TTS audio from Google Cloud
 def get_tts_audio(video_id):
+    global max_paragraphs
     # Voice options
-    voices = ["en-GB-Neural2-A", "en-GB-Neural2-B", "en-GB-Neural2-D", "en-GB-Neural2-F"]
+    voices = ["en-GB-Neural2-A", "en-GB-Neural2-B",
+              "en-GB-Neural2-D", "en-GB-Neural2-F"]
     # Read script
     with open("videos/" + video_id + "/script.json", "r") as f:
         script = json.loads(f.read())
@@ -88,9 +118,10 @@ def get_tts_audio(video_id):
     # Get random voice
     voice = random.choice(voices)
 
-    for i in range(1, 4):
+    for i in range(0, max_paragraphs):
         # Generate audio
-        synthesis_input = tts.SynthesisInput(ssml="<speak>" + script["P" + str(i)] + "</speak>")
+        synthesis_input = tts.SynthesisInput(
+            ssml="<speak>" + script["p" + str(i)] + "</speak>")
         voice_params = tts.VoiceSelectionParams(
             language_code="en-GB",
             name=voice
@@ -113,19 +144,102 @@ def get_tts_audio(video_id):
     return True
 
 
-def get_stock_assets(video_id):
+# Photo and video assets
+def get_stock_images(video_id, part_number, part_tags, image_count, orientation="landscape"):
+    api_key = os.getenv("PEXELS_API_KEY")
+    # Perform search with the tags joined by a + sign
+    response = requests.get("https://api.pexels.com/v1/search?query=" + "+".join(part_tags) + "&per_page=" +
+                            str(image_count) + "&orientation=" + orientation, headers={"Authorization": api_key})
+    # Get images
+    images = response.json()["photos"]
+    # Get image URLs
+    image_urls = [image["src"]["original"] for image in images]
+    # Download images
+    for i in range(0, len(image_urls)):
+        # Get image
+        image = requests.get(image_urls[i])
+        # Save image
+        with open("videos/" + video_id + "/p" + str(part_number) + "/img/" + str(i) + ".jpg", "wb") as f:
+            f.write(image.content)
+
+    return True
+
+
+def get_stock_videos(video_id, part_number, part_tags, video_count, orientation="landscape"):
+    global min_stock_video_length
+    global max_stock_video_length
+
+    api_key = os.getenv("PEXELS_API_KEY")
+
+    response = requests.get("https://api.pexels.com/videos/search?query=" + "+".join(
+        part_tags) + "&orientation=" + orientation, headers={"Authorization": api_key})
+    # Get videos
+    videos = response.json()["videos"]
+    # Get as many videos as the video_count but they need to be at least min_stock_video_length long and at most max_stock_video_length long
+    # videos = [video for video in videos if video["duration"] >=
+    #           min_stock_video_length and video["duration"] <= max_stock_video_length]
+    
+    # Get video URLs
+    video_urls = [video["video_files"][0]["link"] for video in videos]
+
+    # Download videos
+    for i in range(0, video_count):
+        # Get video
+        video = requests.get(video_urls[i])
+        # Save video
+        with open("videos/" + video_id + "/p" + str(part_number) + "/video/" + str(i) + ".mp4", "wb") as f:
+            f.write(video.content)
+
+    return True
+
+
+# Setup stock assets
+def get_part_stock_assets(video_id, part_num, part_len, orientation="landscape"):
+    global min_stock_image_length
+    global min_stock_video_length
+
     # Read tags from script.json
     with open("videos/" + video_id + "/script.json", "r") as f:
         script = json.loads(f.read())
 
-    # Get P1 tags
-    p1_tags = script["p1_img_tags"]
-    # Get P2 tags
-    p2_tags = script["p2_img_tags"]
-    # Get P3 tags
-    p3_tags = script["p3_img_tags"]
-    # Get outro tags
-    outro_tags = script["outro_img_tags"]
+    # Get tags
+    part_tags = script["p" + str(part_num) + "_img_tags"]
+
+    img_count = int(part_len / min_stock_image_length)
+    video_count = int(part_len / min_stock_video_length)
+    print("Getting " + str(img_count) + " images and " + 
+            str(video_count) + " videos for part " + str(part_num))
+
+    if get_stock_images(video_id, part_num, part_tags, img_count, orientation):
+        print("Got images for part " + str(part_num))
+    else:
+        print("Failed to get images for part " + str(part_num))
+
+    if get_stock_videos(video_id, part_num, part_tags, video_count, orientation):
+        print("Got videos for part " + str(part_num))
+    else:
+        print("Failed to get videos for part " + str(part_num))
+
+
+def get_stock_assets(video_id):
+    global max_paragraphs
+    # Read script.json
+    with open("videos/" + video_id + "/script.json", "r") as f:
+        script = json.loads(f.read())
+
+    # Calculate part lengths from the audios
+    part_lengths = []
+    for i in range(0, max_paragraphs):
+        # Get audio length
+        audio = MP3("videos/" + video_id + "/p" + str(i) + "/audio.mp3")
+        audio_length = audio.info.length
+        part_lengths.append(audio_length)
+
+    # Get stock assets for each part
+    for i in range(0, len(part_lengths)):
+        get_part_stock_assets(video_id, i, part_lengths[i])
+
+    return True
 
 
 if __name__ == "__main__":
@@ -144,4 +258,7 @@ if __name__ == "__main__":
     else:
         print("TTS audio generation failed!")
     # Get stock assets
-    # get_stock_assets(video_id)
+    if get_stock_assets(video_id):
+        print("Stock assets generated!")
+    else:
+        print("Stock assets generation failed!")
