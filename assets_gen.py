@@ -26,6 +26,8 @@ tts_client = tts.TextToSpeechClient()
 # Global variables
 min_stock_video_length = 5  # seconds
 min_stock_image_length = 3  # seconds
+max_stock_video_length = 10  # seconds
+max_stock_image_length = 5  # seconds
 max_paragraphs = 3
 orientation = "landscape"
 asset_size = "medium"
@@ -42,6 +44,8 @@ def video_setup():
     global max_paragraphs
     # Generate video ID
     video_id = get_random_string(15)
+    if not os.path.exists("videos"):
+        os.makedirs("videos")
     # Save output
     if not os.path.exists("videos/" + video_id):
         os.makedirs("videos/" + video_id)
@@ -224,7 +228,7 @@ def get_stock_assets(video_id):
     return True
 
 
-def prepare_assets(topic, custom_orientation="landscape", custom_asset_size="medium"):
+def assets_gen(topic, custom_orientation="landscape", custom_asset_size="medium"):
     global orientation, asset_size
     orientation = custom_orientation
     asset_size = custom_asset_size
