@@ -47,15 +47,6 @@ def calculate_video_length(audio_lengths):
         total_length += audio_length
     return total_length
 
-# Create video segments will create a table of path and duration for each video segment that will be random.
-# The paths should be unique and the duration should be random and should not exceed the total video length.
-# Videos have a minimum length of min_stock_video_length and images have a minimum length of min_stock_image_length.
-# Videos have a maximum length of max_stock_video_length and images have a maximum length of max_stock_image_length.
-# The total duration in the table should not exceed the total video length.
-# Start from the first paragraph and go to the last paragraph. Don't use paragraph 2 assets for paragraph 1 and such.
-# Create an algorithm that will calculate the duration needed for each segment so that the total duration is equal to the total video length.
-# The algorithm should also make sure that the duration of each segment is not larger than the actual duration of the asset.
-
 
 def create_video_segments(video_id, total_video_length):
     # Get the path for the assets of each paragraph
