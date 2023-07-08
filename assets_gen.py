@@ -17,7 +17,6 @@ from google.cloud import texttospeech as tts
 
 load_dotenv()
 
-openai.organization = os.getenv("OPENAI_ORGANIZATION_ID")
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Set up TTS client
@@ -86,27 +85,47 @@ def get_video_script(topic, video_id):
     '''
 
     # Completion
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt + "\n"+"Topic: " + topic,
-        temperature=0.5,
-        max_tokens=1000,
-        top_p=1.0,
-        frequency_penalty=0.0,
-        presence_penalty=0.0
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            },
+            {
+                "role": "user",
+                "content": topic
+            }
+        ],
     )
 
     # Validate output
     try:
-        json.loads(response.choices[0].text)
+        # Sanitize output
+        transcript = sanitize_JSON(response["choices"][0]["message"]["content"])
+        
+        json.loads(transcript)
         with open("videos/" + video_id + "/script.json", "w") as f:
-            f.write(response.choices[0].text)
+            f.write(transcript)
 
         return True
 
     except ValueError:
         return False
 
+
+def sanitize_JSON(json_string):
+    json_string = str(json_string)
+    # Remove \n
+    json_string = json_string.replace("\n", "")
+    # Remove \"
+    json_string = json_string.replace("\\\"", "\"")
+    # Remove \'
+    json_string = json_string.replace("\\\'", "\'")
+    # Remove \\n
+    json_string = json_string.replace("\\n", "")
+    
+    return json_string
 
 # TTS audio from Google Cloud
 def get_tts_audio(video_id):
