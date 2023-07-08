@@ -6,7 +6,7 @@
     Author: Juled Zaganjori    
 '''
 
-from moviepy.editor import VideoFileClip, ImageClip, AudioFileClip, concatenate_videoclips, concatenate_audioclips
+from moviepy.editor import VideoFileClip, ImageClip, AudioFileClip, concatenate_videoclips, concatenate_audioclips, vfx
 import os
 import json
 import requests
@@ -48,6 +48,7 @@ def calculate_video_length(audio_lengths):
     return total_length
 
 
+# Create the video segments
 def create_video_segments(video_id, total_video_length):
     # Get the path for the assets of each paragraph
     paragraphs_path = os.path.join("videos", video_id)
@@ -96,34 +97,68 @@ def create_video_segments(video_id, total_video_length):
 
             # Subtract the asset duration from the remaining video length
             remaining_video_length -= asset_duration
+            print("Remaining Video Length:", remaining_video_length)
 
             # Exit the loop if there is no time remaining
-            if remaining_video_length <= 0:
+            if remaining_video_length <= audio_length:
                 break
 
         # Subtract the audio duration from the remaining video length
         remaining_video_length -= audio_length
+        print("Remaining Video Length after Audio:", remaining_video_length)
 
         # Exit the loop if there is no time remaining
-        if remaining_video_length <= 0:
+        if remaining_video_length <= audio_length:
             break
 
     return video_segments
 
 
+# Movipy animations
+def zoom_in(image_clip):
+    return image_clip.fx(vfx.zoom, 1.5, 1.5)
+
+
+# Animate the video segments
+def animate_video_segments(video_segments):
+    pass
+
+
 # Create the video from the video segments
 def render_video(video_id, video_segments, audios):
+    # Extract the video clips
     videos = [video_segment[0] for video_segment in video_segments]
 
+    # Concatenate the video clips
     video = concatenate_videoclips(videos)
+
+    # Calculate the total duration of the video segments
+    total_video_duration = sum([video_segment[2] for video_segment in video_segments])
+
+    # Trim or extend the video duration to match the audio duration
+    audio_duration = sum([audio.duration for audio in audios])
+    if total_video_duration < audio_duration:
+        # Extend the video duration by looping it
+        video = video.fx(vfx.loop, duration=audio_duration)
+    elif total_video_duration > audio_duration:
+        # Trim the video duration to match the audio duration
+        video = video.subclip(0, audio_duration)
+
+    # Concatenate the audio clips
     audio = concatenate_audioclips(audios)
 
+    # Set the audio for the video
     video = video.set_audio(audio)
-    # Resize
+
+    # Resize the video
     video = video.resize(video_size)
-    # Write
-    video.write_videofile(os.path.join("videos", video_id, "video.mp4"),
-                          fps=video_fps, logger=proglog.TqdmProgressBarLogger(print_messages=False))
+
+    # Write the video file
+    video.write_videofile(
+        os.path.join("videos", video_id, "video.mp4"),
+        fps=video_fps,
+        logger=proglog.TqdmProgressBarLogger(print_messages=False)
+    )
     video.close()
 
 
