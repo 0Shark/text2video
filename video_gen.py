@@ -12,8 +12,8 @@ import json
 import requests
 import random
 import proglog
+import librosa
 from tabulate import tabulate
-from mutagen.mp3 import MP3
 from assets_gen import min_stock_video_length, min_stock_image_length, max_stock_video_length, max_stock_image_length, max_paragraphs, orientation, asset_size
 
 # Global variables
@@ -37,8 +37,7 @@ def get_audio_clip(audio_path):
 
 
 def get_audio_length(audio_path):
-    audio = MP3(audio_path)
-    return audio.info.length
+    return librosa.get_duration(path=audio_path)
 
 
 def calculate_video_length(audio_lengths):
@@ -65,7 +64,7 @@ def create_video_segments(video_id, total_video_length):
         assets += [f.path for f in os.scandir(
             os.path.join(paragraph, "video")) if f.is_file()]
 
-        audio_path = os.path.join(paragraph, "audio.mp3")
+        audio_path = os.path.join(paragraph, "audio.wav")
         audio_length = get_audio_length(audio_path)
 
         # maximum available duration
@@ -181,7 +180,7 @@ def video_gen(video_id):
     audio_paths = []
     for i in range(0, max_paragraphs):
         audio_paths.append(os.path.join(
-            "videos", video_id, "p" + str(i), "audio.mp3"))
+            "videos", video_id, "p" + str(i), "audio.wav"))
 
     # Get audio clips
     audios = []
@@ -227,7 +226,7 @@ if __name__ == "__main__":
     audio_paths = []
     for i in range(0, max_paragraphs):
         audio_paths.append(os.path.join(
-            "videos", video_id, "p" + str(i), "audio.mp3"))
+            "videos", video_id, "p" + str(i), "audio.wav"))
 
     # Get audio clips
     audios = []
