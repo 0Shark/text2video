@@ -1,0 +1,9 @@
+pyfiglet
+proglog
+moviepy==1.0.2
+librosa
+tabulate
+openai==0.27.3
+python-dotenv
+tqdm
+azure-cognitiveservices-speech==1.27.0
