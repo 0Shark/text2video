@@ -1,23 +1,39 @@
 # Text2Video
 
-This is a simple script that creates a video from a topic that you provide. It uses the OpenAI GPT-3 API to generate text, the Azure Cloud Text-to-Speech API to convert the text to speech, grabs tagged images from Pexels, and then uses MoviePy to create a video.
+Create YouTube Shorts without any effort, simply by providing a video topic to talk about.
 
-### Tools Used
-* [OpenAI GPT-3 API](https://openai.com/blog/openai-api/)
-* [Azure Text-to-Speech API](https://azure.microsoft.com/en-us/products/ai-services/text-to-speech)
-* [Pexels API](https://www.pexels.com/api/)
-* [MoviePy](https://zulko.github.io/moviepy/)
+## Installation
 
-### How to Use
-1. Clone the repository
-2. Create a virtual environment and install the requirements
-3. Create an Azure Cloud account and enable the Text-to-Speech API
-4. Create a Pexels account and get an API key
-5. Create an OpenAI account and get an API key
-6. Create a .env file and add the following variables:
-    * AZURE_SPEECH_KEY = your Azure Speech API key
-    * AZURE_SPEECH_REGION = your Azure resource region
-    * PEXELS_API_KEY = your Pexels API key
-    * OPENAI_API_KEY = your OpenAI API key
-    * OPENAI_ORGANIZATION_ID = your OpenAI organization ID
-7. Run main.py and provide the topic you want to create a video for
+```bash
+cd MoneyPrinter/Backend
+pip install -r requirements.txt
+
+# Run the backend server
+python3 main.py
+
+# Run the frontend server
+cd ../Frontend
+python3 -m http.server 3000
+```
+
+## Usage
+
+1. In `.env` fill in the required values
+1. Open `http://localhost:3000` in your browser
+1. Enter a topic to talk about
+1. Choose a voice ID
+1. Click on the "Generate" button
+1. Wait for the video to be generated
+1. The video's location is `temp/output.mp4`
+
+## Fonts
+
+Add your fonts to the `fonts/` folder, and load them by specifiying the font name on line `124` in `Backend/video.py`.
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+See [`LICENSE`](LICENSE) file for more information.
