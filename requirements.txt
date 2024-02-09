@@ -10,3 +10,5 @@ playsound
 Pillow==10.2.0
 srt_equalizer
 assemblyai
+python-dotenv
+elevenlabs
