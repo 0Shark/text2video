@@ -7,7 +7,7 @@ termcolor
 flask
 flask-cors
 playsound
-Pillow==10.2.0
+Pillow==9.4.0
 srt_equalizer
 assemblyai
 python-dotenv
